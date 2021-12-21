@@ -1,9 +1,13 @@
 <?php
+#Set headers to prevent CORS errors
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST');
 header('Access-Control-Allow-Headers: Origin, Content-Type, X-Auth-Token');
 
 
+/*
+Function to fetch specific URL using curl
+*/
 
 function file_get_contents_curl($url)
 {
@@ -18,33 +22,28 @@ function file_get_contents_curl($url)
   return $data;
 }
 
-
-
-if (isset($_POST["url"])) {
-  #Sanitise and continue  
-  $url = $_POST["url"];
-  $cleanURL = filter_var($url, FILTER_SANITIZE_URL);
-
-  getPageTitle($cleanURL);
-} else {
-  #No URL, die  
-  print_r('fail');
-  die;
-}
-
+/*
+Function to get the URL page title
+*/
 function getPageTitle($url)
 {
+  #Fetches page data using file_get_contents_curl function
   $html = file_get_contents_curl("$url");
 
-  //parsing begins here:
+  #Parse through document 
   $doc = new DOMDocument();
   @$doc->loadHTML($html);
   $nodes = $doc->getElementsByTagName('title');
 
-  //get and display what you need:
+  #Get the title from the page elements
   $title = $nodes->item(0)->nodeValue;
   $title = filter_var($title, FILTER_DEFAULT);
 
+  /*
+  If we have recovered a title from the webpage return it to the client to be displayed by the chrome extension
+  If a title was not recovered for any reason, return the original url.
+  This allows us to gracefully fail without the user seeing any errors.
+  */
   try {
     if (!empty($title)) {
       echo $title;
@@ -58,3 +57,17 @@ function getPageTitle($url)
 }
 
 
+if (isset($_POST["url"])) {
+  #Sanitise URL then continue   
+  $url = $_POST["url"];
+  $cleanURL = filter_var($url, FILTER_SANITIZE_URL);
+
+  getPageTitle($cleanURL);
+} else {
+  /*
+  If no URL is specified it is likely the request was not sent by the chrome extension.
+  Simply kill the script, if it is a legitmate request it will be remade by the client.
+  */
+  print_r('fail');
+  die;
+}
